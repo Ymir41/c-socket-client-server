@@ -1,6 +1,3 @@
-//
-// Created by janek on 3/12/25.
-//
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
@@ -22,13 +19,17 @@ int main (int argc, char *argv[]) {
     sockfd = socket (AF_INET, SOCK_STREAM, 0);
     address.sin_family = AF_INET;
     address.sin_port = htons(9734);
-    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_addr.s_addr = inet_addr(argv[1]);
+    if (address.sin_addr.s_addr == INADDR_NONE) {
+        perror("Address not recognized");
+        exit(1);
+    }
 
     len = sizeof(address);
     int result = connect(sockfd, (struct sockaddr *)&address, len);
     if (result == -1) {
         perror("Connection error! Check if server is running.\n");
-        exit(1);
+        exit(2);
     }
 
     int exit = 0;
@@ -36,18 +37,18 @@ int main (int argc, char *argv[]) {
     char command[20];
     uint32_t count = 0;
     while (! exit) {
-        //processing user input-----------------------------------------------------------------------------------------
-        scanf("%19s", command);
-        if (strcmp(command, "exit") == 0) {
+        //processing user input
+        fgets(command, sizeof(command), stdin);
+        if (strncmp(command, "exit", 4) == 0) {
             exit = 1;
             continue;
         }
-        if (strcmp(command, "quit") == 0) {
+        if (strncmp(command, "quit", 4) == 0) {
             exit = 1;
             continue;
         }
 
-        if (strcmp(command, "time") == 0) {
+        if (strncmp(command, "time", 4) == 0) {
             mode = TIME;
         }
         else if (strncmp(command, "sqrt", 4) == 0) {
@@ -68,19 +69,23 @@ int main (int argc, char *argv[]) {
             }
         }
 
-        //sending request-----------------------------------------------------------------------------------------------
+        //sending request
         uint32_t request = (mode == SQRT) ? 1 : 2;
         request = htonl(request);
         uint32_t request_id = htonl(count);
 
-        write(sockfd, &request, sizeof(request));
+        int res = write(sockfd, &request, sizeof(request));
+        if (res==-1 || res==0){
+            perror("Connection error!\nCheck if server is runing.\n");
+            exit=1;
+        }
         write(sockfd, &request_id, sizeof(request_id));
 
         if (mode == SQRT) {
             write(sockfd, &number, sizeof(number));
         }
 
-        //getting response----------------------------------------------------------------------------------------------
+        //getting response
         uint32_t response = 0;
         uint32_t response_id = 0;
 
@@ -105,13 +110,24 @@ int main (int argc, char *argv[]) {
         else {
             uint32_t result_len;
             read(sockfd, &result_len, sizeof(result_len));
-            char *result = (char *) calloc(result_len+1, 1);
-            read(sockfd, result, result_len);
+            result_len = ntohl(result_len);
+            char *result = (char *) calloc(result_len+1, sizeof(char));
+            if (!result){
+                perror("Memory error!\n");
+                continue;
+            }
+            res = read(sockfd, result, result_len);
+            if (res!=result_len){
+                perror("Communication error! Recived less data then expected.\n");
+                free(result);
+                continue;
+            }
             printf("Server time: %s\n", result);
             free(result);
         }
 
         count++;
     }
+    shutdown(sockfd, SHUT_RDWR);
     return 0;
 }
