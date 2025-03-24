@@ -123,6 +123,7 @@ void *client_thread(void *arg){
         remove_socket(client_index);
         printf("Connection with client ended!\n");
     }
+    return NULL;
 }
 
 
