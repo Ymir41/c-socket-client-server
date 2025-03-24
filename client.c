@@ -7,19 +7,45 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "common.h"
 
 int main (int argc, char *argv[]) {
-    if (argc != 2) {
-        perror("Wrong number of arguments. Use ./client <host>\n");
-        exit(1);
+    long port;
+    char *host=NULL;
+    char host_stdin[20];
+    char port_stdin[5];
+    char *end_of_port_nr;
+
+    if (argc != 3) {
+        printf("Host: ");
+        fgets(host_stdin, sizeof(host_stdin), stdin);
+        printf("Port: ");
+        fgets(port_stdin, sizeof(port_stdin), stdin);
+        errno = 0;
+        port = strtol(port_stdin, &end_of_port_nr, 10);
+        if (end_of_port_nr == port_stdin){
+            perror("Port must be an inteager!\n");
+            exit(1);
+        }
+        host = host_stdin;
     }
+    else{
+        host = argv[1];
+        errno = 0;
+        port = strtol(argv[2], &end_of_port_nr, 10);
+        if (end_of_port_nr == argv[2]){
+            perror("Port must be an inteager!\n");
+            exit(1);
+        }
+    }
+
     int sockfd;
     socklen_t len;
     struct sockaddr_in address;
     sockfd = socket (AF_INET, SOCK_STREAM, 0);
     address.sin_family = AF_INET;
-    address.sin_port = htons(9734);
-    address.sin_addr.s_addr = inet_addr(argv[1]);
+    address.sin_port = htons((uint16_t)port);
+    address.sin_addr.s_addr = inet_addr(host);
     if (address.sin_addr.s_addr == INADDR_NONE) {
         perror("Address not recognized");
         exit(1);
@@ -82,7 +108,9 @@ int main (int argc, char *argv[]) {
         write(sockfd, &request_id, sizeof(request_id));
 
         if (mode == SQRT) {
+            number = htond(number);
             write(sockfd, &number, sizeof(number));
+            number = ntohd(number);
         }
 
         //getting response
@@ -105,6 +133,7 @@ int main (int argc, char *argv[]) {
         if (mode == SQRT) {
             double result;
             read(sockfd, &result, sizeof(result));
+            result = ntohd(result);
             printf("Result of sqrt(%lf): %lf\n", number, result);
         }
         else {
