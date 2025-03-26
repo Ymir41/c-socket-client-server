@@ -89,6 +89,10 @@ int main (int argc, char *argv[]) {
         if (mode == SQRT) {
             errno=0;
             number = strtod(command+4, NULL);
+            if (number<0) {
+              perror("Number must be greater than zero!\n");
+              continue;
+            }
             if (errno != 0) {
                 perror("Error occurred while processing the number. Use: sqrt <number>\n");
                 continue;
