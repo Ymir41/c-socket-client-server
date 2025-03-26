@@ -9,6 +9,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include "common.h"
 
 int main() {
     int server_sockfd, client_sockfd;
@@ -57,7 +58,9 @@ int main() {
             if (request==1) {
                 double number = 0;
                 read(client_sockfd, &number, sizeof(number));
+                number = htond(number);
                 double out = sqrt(number);
+                out = ntohd(out);
                 request |= 0x01000000;
                 request = htonl(request);
                 write(client_sockfd, &request, sizeof(request));

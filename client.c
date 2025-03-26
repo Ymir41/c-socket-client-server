@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "common.h"
 
 int main (int argc, char *argv[]) {
     if (argc != 2) {
@@ -82,7 +83,9 @@ int main (int argc, char *argv[]) {
         write(sockfd, &request_id, sizeof(request_id));
 
         if (mode == SQRT) {
+          	number = htond(number);
             write(sockfd, &number, sizeof(number));
+            number = ntohd(number);
         }
 
         //getting response
@@ -105,6 +108,7 @@ int main (int argc, char *argv[]) {
         if (mode == SQRT) {
             double result;
             read(sockfd, &result, sizeof(result));
+            result = ntohd(result);
             printf("Result of sqrt(%lf): %lf\n", number, result);
         }
         else {

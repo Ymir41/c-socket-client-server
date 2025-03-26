@@ -3,7 +3,8 @@
 //
 
 #include "common.h"
-#include <types.h>
+#include <stdint.h>
+#include <endian.h>
 
 double htond(double num){
     uint64_t  *num_cast = (uint64_t*) &num;
