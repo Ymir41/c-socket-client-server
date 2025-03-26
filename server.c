@@ -16,6 +16,9 @@
 #include <stdatomic.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <arpa/inet.h>
 
 #define MAX_CLIENTS 100
 volatile int client_sockets[MAX_CLIENTS]={0};
@@ -137,6 +140,35 @@ int main(int argc, char *argv[]) {
               exit(1);
           }
   	}
+    struct ifaddrs *addrs,*tmp;
+
+    getifaddrs(&addrs);
+    tmp = addrs;
+    void *addr_ptr = NULL;
+    char addr_str[INET6_ADDRSTRLEN];
+
+    while (tmp)
+    {
+        if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET){
+          addr_ptr = &((struct sockaddr_in *)tmp->ifa_addr)->sin_addr;
+          if (addr_ptr) {
+                inet_ntop(tmp->ifa_addr->sa_family, addr_ptr, addr_str, sizeof(addr_str));
+                printf("%s\t%s\n", tmp->ifa_name, addr_str);
+            }
+        }
+
+        tmp = tmp->ifa_next;
+    }
+    freeifaddrs(addrs);
+
+    printf("Choose address: ");
+
+    if (fgets(addr_str, sizeof(addr_str), stdin) == NULL){
+      perror("Input error!");
+      exit(1);
+    }
+    addr_str[strcspn(addr_str, "\n")] = '\0';
+
     int server_sockfd, client_sockfd;
     socklen_t server_len, client_len;
     struct sockaddr_in server_addr;
@@ -145,10 +177,18 @@ int main(int argc, char *argv[]) {
     server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = htonl (INADDR_ANY);
+    inet_pton(AF_INET, addr_str, &server_addr.sin_addr.s_addr);
     server_addr.sin_port = htons ((uint16_t) port);
     server_len = sizeof (server_addr);
-    bind (server_sockfd, (struct sockaddr *) &server_addr, server_len);
+    if (bind (server_sockfd, (struct sockaddr *) &server_addr, server_len)==-1){
+    	switch (errno){
+          case EADDRINUSE: printf("Address already in use\n"); break;
+          case EADDRNOTAVAIL: printf("Address not available\n"); break;
+          case EAFNOSUPPORT: printf("Address not supported\n"); break;
+          default: printf("Error while binding socket\n"); break;
+    	}
+        exit(1);
+    }
 
 
     listen(server_sockfd, 5);
