@@ -127,7 +127,16 @@ void *client_thread(void *arg){
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
+  	long port = 9734;
+    char *end;
+  	if (argc >= 2){
+          port = strtol(argv[1], &end, 10);
+		  if (end == argv[1] || port > 65535 || port<=0){
+              printf("Invalid port number!\n");
+              exit(1);
+          }
+  	}
     int server_sockfd, client_sockfd;
     socklen_t server_len, client_len;
     struct sockaddr_in server_addr;
@@ -137,7 +146,7 @@ int main() {
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl (INADDR_ANY);
-    server_addr.sin_port = htons (9734);
+    server_addr.sin_port = htons ((uint16_t) port);
     server_len = sizeof (server_addr);
     bind (server_sockfd, (struct sockaddr *) &server_addr, server_len);
 
